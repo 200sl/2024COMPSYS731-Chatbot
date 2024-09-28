@@ -1,19 +1,57 @@
 import queue
 import random
+import threading
+import time
 import uuid
 from threading import Thread
-
 from openai import OpenAI
+from socket import *
+
+
+def singleton(cls):
+    instance = {}
+
+    def get_instance(*args, **kwargs):
+        if cls not in instance:
+            instance[cls] = cls(*args, **kwargs)
+        return instance[cls]
+
+    return get_instance
+
+
+@singleton
+class ResultBuffer:
+    def __init__(self):
+        self.resultBuffer = ""
+        self.source = socket(AF_INET, SOCK_DGRAM)
+
+    def recvThread(self):
+        while True:
+            results = self.source.recv(1024)
+            self.resultBuffer = results.decode()
+
+    def getResult(self):
+        return self.resultBuffer
+
+    def bind(self, port):
+        self.source.bind(('localhost', port))
+        t = Thread(target=self.recvThread)
+        t.start()
+
 
 MY_MODEL_SELECT = "gpt-4o-mini"
 MY_API_KEY = ""
 
 
+RECEIVE_RESULT_PORT = 16666
+resultReceiver = ResultBuffer()
+resultReceiver.bind(RECEIVE_RESULT_PORT)
+
+
 def getUserEmotion():
-    results = ['高兴', '伤心', '愤怒', '失望']
-    result = random.Random().choice(results)
-    print(f"用户情绪：{result}")
-    return [result]
+    result = ResultBuffer().getResult()
+
+    return ['Normal'] if result == "" else [result]
 
 
 class ChatSession:
@@ -26,14 +64,15 @@ class ChatSession:
         self.chatHistory.append(
             {
                 "role": "system",  # function/assistant/user/system
-                "content": "你是一个心理咨询师，通过识别用户的情感和情绪，为用户提供心理咨询服务。"
+                "content": "You are a counsellor who provides counselling services to users by identifying their "
+                           "feelings and emotions."
             }
         )
 
         self.functions = [
             {
                 "name": "getUserEmotion",
-                "description": "获取用户情绪",
+                "description": "Get user's emotion via emotion recognition model",
                 "parameters": {
                     "type": "object",
                     "properties": {}
@@ -48,7 +87,8 @@ class ChatSession:
         self.chatHistory.append(
             {
                 "role": "system",  # function/assistant/user/system
-                "content": "你是一个心理咨询师，通过识别用户的情感和情绪，为用户提供心理咨询服务。"
+                "content": "You are a counsellor who provides counselling services to users by identifying their "
+                           "feelings and emotions."
             }
         )
 
@@ -95,7 +135,7 @@ class ChatSession:
                 })
 
                 continueGenResult = self.client.chat.completions.create(model=self.model,
-                                                                       messages=self.chatHistory, stream=True)
+                                                                        messages=self.chatHistory, stream=True)
 
                 for continueChunk in continueGenResult:
                     if type(continueChunk.choices[0].delta.content) is not str:
@@ -125,3 +165,9 @@ class ChatSession:
         thread.start()
         return thread, dataQueue
 
+
+# for test
+if __name__ == "__main__":
+    while True:
+        print(getUserEmotion())
+        time.sleep(0.3)

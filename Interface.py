@@ -6,6 +6,8 @@ import torchvision.transforms as transforms
 from torchvision import models
 from PIL import Image
 
+from socket import *
+
 # 创建主窗口
 root = tk.Tk()
 root.title("Emotion Recognition Interface")
@@ -25,6 +27,17 @@ emotion_label.pack(padx=10, pady=10)
 # 情绪标签列表
 emotion_labels = ['Anger', 'Happy', 'Surprise', 'Sad', 'Contempt', 'Fear', 'Disgust', 'Neutral']
 
+
+class DataHooker:
+    def __init__(self, port):
+        self.sender = socket(AF_INET, SOCK_DGRAM)
+        self.port = port
+
+    def update(self, toSendData):
+        serInfo = ('localhost', self.port)
+        self.sender.sendto(toSendData.encode(), serInfo)
+
+
 # 情绪识别模型初始化
 class Inferencer:
     def __init__(self, model_path):
@@ -38,11 +51,11 @@ class Inferencer:
 
     def load_model(self, model_path):
         model = torch.load(model_path, map_location=torch.device('cpu'))
-    
-         # 将模型移动到正确的设备上
+
+        # 将模型移动到正确的设备上
         model = model.to(self.device)
-    
-         # 设置模型为评估模式
+
+        # 设置模型为评估模式
         model.eval()
         return model
 
@@ -63,9 +76,14 @@ class Inferencer:
             confidence = probabilities[0][predicted_class].item()
         return predicted_class, confidence
 
+
 # 更新模型路径
 model_path = "/Users/hehahahaha/Desktop/NZ Life/UOA/S2/COMPSYS731/emotion_recognition_CNN/alexnet_face_recognition.pt"
 inferencer = Inferencer(model_path)
+
+SEND_RESULT_PORT = 16666
+resultSender = DataHooker(SEND_RESULT_PORT)
+
 
 def update_frame():
     # 从摄像头抓取一帧
@@ -81,6 +99,8 @@ def update_frame():
         if confidence >= 0.7:
             # 获取对应的情绪标签
             predicted_emotion = emotion_labels[predicted_class]
+
+            resultSender.update(predicted_emotion)
             # 显示情绪识别结果
             emotion_label.config(text=f"Predicted Emotion: {predicted_emotion}, Confidence: {confidence:.2f}")
         else:
@@ -94,17 +114,18 @@ def update_frame():
         video_label.imgtk = imgtk
         video_label.configure(image=imgtk)
         transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(15),
-        transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # 随机裁剪和缩放
-        transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),  # 色彩抖动
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Resize((224, 224)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
+            transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # 随机裁剪和缩放
+            transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),  # 色彩抖动
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
     # 每 20 毫秒刷新一次
     video_label.after(20, update_frame)
+
 
 # 开始更新视频帧
 update_frame()
