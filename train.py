@@ -1,104 +1,114 @@
 import torch
 import torch.nn as nn
-import torchvision.transforms as transforms
 import torchvision.datasets as datasets 
+import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision import models
 from dataset import CustomImageDataset
-import os
+from earlystopping import EarlyStopping
 
-    # Load the pre-trained AlexNet model
-model = models.alexnet(weights=True)
-model.load_state_dict(torch.load('alexnet-owt-7be5be79.pth', weights_only=True))
-# model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT)
+class Trainer:
+    def __init__(self):
+        # Define image preprocessing operations
+        transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+                    
+        # Load data set
+        self.train_dataset = datasets.ImageFolder(root='C:/Glory/UoA-Master/Cos731/AlexNet/train_images', transform=transform)
+        self.test_dataset = datasets.ImageFolder(root='C:/Glory/UoA-Master/Cos731/AlexNet/test_images', transform=transform)
 
+        # Create data loaders
+        self.train_loader = DataLoader(self.train_dataset, batch_size=10, shuffle=True)
+        self.test_loader = DataLoader(self.test_dataset, batch_size=10, shuffle=False)
 
-for param in model.features.parameters():  
-     param.requires_grad = False
+        # Load the pre-trained AlexNet model
+        self.model = models.alexnet(weights=True)
+        self.model.load_state_dict(torch.load('alexnet-owt-7be5be79.pth', weights_only=True))
 
-     # Modify the last layer to accommodate the number of categories for expression recognition
-num_classes = 8  # Adjusted for the number of data set categories
-model.classifier[6] = nn.Linear(4096, num_classes)
+        # Modify the last layer for the number of categories
+        num_classes = 8  # Adjusted for the number of categories in the dataset
+        self.model.classifier[6] = nn.Linear(4096, num_classes)
 
-    # Define loss functions and optimizers
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.00001)
+        # Define loss functions and optimizers
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.00001)
 
-    # Define the learning rate scheduler, step_size=30 indicates that the learning rate decays once every 30 epochs,
-    # and gamma=0.1 indicates that the decays are 0.1 times as large as before
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+        # Define learning rate scheduler
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=30, gamma=0.1)
 
-    # Define image preprocessing operations
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(15),
-    transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # 随机裁剪和缩放
-    transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),  # 色彩抖动
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
+        # Move model to GPU if available
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
 
-   # Load data set
-train_dataset = CustomImageDataset(root_dir='C:/Glory/UoA-Master/Cos731/AlexNet/train_images', transform=transform)
-test_dataset = CustomImageDataset(root_dir='C:/Glory/UoA-Master/Cos731/AlexNet/test_images', transform=transform)
+    def train(self, num_epochs, early_stopping):
+        best_accuracy = 0.0  # Initialize best accuracy
 
-# train_dataset = datasets.ImageFolder(root='C:/Glory/UoA-Master/Cos731/AlexNet/train_images', transform=transform)
-# test_dataset = datasets.ImageFolder(root='C:/Glory/UoA-Master/Cos731/AlexNet/test_images', transform=transform)
-
-   # Create a data loader
-train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=10, shuffle=False)
-
-   # Move the model to the GPU (if available)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
-
-
-num_epochs = 30
-model.train()
-
-for epoch in range(num_epochs):
-
-            
+        for epoch in range(num_epochs):
+            self.model.train()
             running_loss = 0.0
-            
-            for images, labels in train_loader:
-                images, labels = images.to(device), labels.to(device)
-                
-                optimizer.zero_grad()
-                outputs = model(images)
-                loss = criterion(outputs, labels)
+
+            # Training loop
+            for images, labels in self.train_loader:
+                images, labels = images.to(self.device), labels.to(self.device)
+
+                self.optimizer.zero_grad()
+                outputs = self.model(images)
+                loss = self.criterion(outputs, labels)
                 loss.backward()
-                optimizer.step()
-                
+                self.optimizer.step()
+
                 running_loss += loss.item()
 
-            print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(train_loader):.4f}')
+            print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(self.train_loader):.4f}')
 
             # Print the current learning rate
-            current_lr = scheduler.get_last_lr()[0]
+            current_lr = self.scheduler.get_last_lr()[0]
             print(f'Learning rate: {current_lr}')
 
+            # Adjust learning rate
+            self.scheduler.step()
 
-            # Adjusted learning rate
-            scheduler.step()
+            # Evaluate the model on the test set
+            accuracy = self.evaluate()
 
-            # Evaluation model
-            model.eval()
-            correct = 0
-            total = 0
+            # Save the model if the accuracy is the best we've seen so far
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                torch.save(self.model.state_dict(), 'best_alexnet_face_recognition.pth')
+                print(f"Saved Best Model with Accuracy: {best_accuracy}%")
 
-            with torch.no_grad():
-                        for images, labels in test_loader:
-                            images, labels = images.to(device), labels.to(device)
-                            outputs = model(images)
-                            _, predicted = torch.max(outputs.data, 1)
-                            total += labels.size(0)
-                            correct += (predicted == labels).sum().item()
+            # Call the early stopping
+            early_stopping(accuracy)
 
-            print(f'Accuracy: {100 * correct / total}%')
+            if early_stopping.early_stop:
+                print(f"Early stopping at epoch {epoch+1}")
+                break
 
-torch.save(model.state_dict(), 'alexnet_face_recognition.pt')
+    def evaluate(self):
+        self.model.eval()
+        correct = 0
+        total = 0
 
-model.load_state_dict(torch.load('alexnet_face_recognition.pt'))
+        with torch.no_grad():
+            for images, labels in self.test_loader:
+                images, labels = images.to(self.device), labels.to(self.device)
+                outputs = self.model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+        accuracy = 100 * correct / total
+        print(f'Validation Accuracy: {accuracy}%')
+        return accuracy
+
+# Create a Trainer instance
+trainer = Trainer()
+
+# Create an EarlyStopping instance with patience=10
+early_stopping = EarlyStopping(patience=10, delta=0)
+
+# Start training with early stopping
+trainer.train(150, early_stopping)
