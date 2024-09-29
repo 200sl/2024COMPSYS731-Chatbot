@@ -27,7 +27,7 @@ emotion_label.pack(padx=10, pady=10)
 emotion_labels = ['Anger', 'Happy', 'Surprise', 'Sad', 'Contempt', 'Fear', 'Disgust', 'Neutral']
 
 # YOLOv8 for face detection
-face_model = YOLO('/Users/hehahahaha/Desktop/NZ Life/UOA/S2/COMPSYS731/emotion_recognition_CNN/yolov8n.pt')
+face_model = YOLO('/Users/hehahahaha/Desktop/NZ Life/UOA/S2/COMPSYS731/emotion_recognition_CNN/yolov8n-face.pt')
 
 # Load your emotion classification model
 emotion_model_path = "/Users/hehahahaha/Desktop/NZ Life/UOA/S2/COMPSYS731/emotion_recognition_CNN/checkpoints/8.pt"
