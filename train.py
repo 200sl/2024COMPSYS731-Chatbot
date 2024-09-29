@@ -1,51 +1,62 @@
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-import torchvision.datasets as datasets
+import torchvision.datasets as datasets 
 from torch.utils.data import DataLoader
 from torchvision import models
+from dataset import CustomImageDataset
 import os
 
-# class Trainer:
-#    def _init_(a, save_path):
-
-    # 加载预训练的 AlexNet 模型
+    # Load the pre-trained AlexNet model
 model = models.alexnet(weights=True)
 model.load_state_dict(torch.load('alexnet-owt-7be5be79.pth', weights_only=True))
-    # models.load_state_dict(torch.load('alexnet-owt-7be5be79.pth'), weights=True)
+# model = models.alexnet(weights=models.AlexNet_Weights.DEFAULT)
 
 
-     # 修改最后一层，适应表情识别的类别数量
-num_classes = 8  # 根据数据集类别数调整
+for param in model.features.parameters():  
+     param.requires_grad = False
+
+     # Modify the last layer to accommodate the number of categories for expression recognition
+num_classes = 8  # Adjusted for the number of data set categories
 model.classifier[6] = nn.Linear(4096, num_classes)
 
-    # 定义损失函数和优化器
+    # Define loss functions and optimizers
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.00001)
 
-    # 定义图像预处理操作
+    # Define the learning rate scheduler, step_size=30 indicates that the learning rate decays once every 30 epochs,
+    # and gamma=0.1 indicates that the decays are 0.1 times as large as before
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+
+    # Define image preprocessing operations
 transform = transforms.Compose([
-         transforms.Resize((224, 224)),  # AlexNet 输入尺寸
-         transforms.ToTensor(),
-         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    transforms.Resize((224, 224)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(15),
+    transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # 随机裁剪和缩放
+    transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),  # 色彩抖动
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 
-   # 加载数据集
-train_dataset = datasets.ImageFolder(root='C:/Glory/UoA-Master/Cos731/AlexNet/train_images', transform=transform)
-test_dataset = datasets.ImageFolder(root='C:/Glory/UoA-Master/Cos731/AlexNet/test_images', transform=transform)
+   # Load data set
+train_dataset = CustomImageDataset(root_dir='C:/Glory/UoA-Master/Cos731/AlexNet/train_images', transform=transform)
+test_dataset = CustomImageDataset(root_dir='C:/Glory/UoA-Master/Cos731/AlexNet/test_images', transform=transform)
 
-   # 创建数据加载器
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+# train_dataset = datasets.ImageFolder(root='C:/Glory/UoA-Master/Cos731/AlexNet/train_images', transform=transform)
+# test_dataset = datasets.ImageFolder(root='C:/Glory/UoA-Master/Cos731/AlexNet/test_images', transform=transform)
 
-   # 将模型移动到 GPU 上（如果有）
+   # Create a data loader
+train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=10, shuffle=False)
+
+   # Move the model to the GPU (if available)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-# 
-num_epochs = 10
+
+num_epochs = 30
 model.train()
-#    def train(a, num_epochs):
 
 for epoch in range(num_epochs):
 
@@ -65,26 +76,29 @@ for epoch in range(num_epochs):
 
             print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(train_loader):.4f}')
 
-        # 评估模型
-model.eval()
-correct = 0
-total = 0
+            # Print the current learning rate
+            current_lr = scheduler.get_last_lr()[0]
+            print(f'Learning rate: {current_lr}')
 
-with torch.no_grad():
-            for images, labels in test_loader:
-                images, labels = images.to(device), labels.to(device)
-                outputs = model(images)
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
 
-print(f'Accuracy: {100 * correct / total}%')
+            # Adjusted learning rate
+            scheduler.step()
+
+            # Evaluation model
+            model.eval()
+            correct = 0
+            total = 0
+
+            with torch.no_grad():
+                        for images, labels in test_loader:
+                            images, labels = images.to(device), labels.to(device)
+                            outputs = model(images)
+                            _, predicted = torch.max(outputs.data, 1)
+                            total += labels.size(0)
+                            correct += (predicted == labels).sum().item()
+
+            print(f'Accuracy: {100 * correct / total}%')
 
 torch.save(model.state_dict(), 'alexnet_face_recognition.pt')
 
 model.load_state_dict(torch.load('alexnet_face_recognition.pt'))
-
-#os.makedirs(save_path, exist_ok=True)
-#torch.save(self.model, save_path + os.sep + str(epoch) + ".pt")
-
-# 用新图像进行推理...
