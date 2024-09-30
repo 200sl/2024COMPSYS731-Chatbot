@@ -5,7 +5,7 @@ if __name__ == '__main__':
     chatSession = ChatSession()
 
     print("==================================")
-    print("Welcome to Psychologist Lab")
+    print("Welcome to EduBot Lab")
     print("Model Version: gpt-4o-mini")
     print("Type '.end' to exit, '.help' for help")
     print("==================================")
