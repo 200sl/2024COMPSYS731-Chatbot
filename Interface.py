@@ -1,4 +1,5 @@
 import tkinter as tk
+from socket import socket, AF_INET, SOCK_DGRAM
 from PIL import Image, ImageTk
 import cv2
 import torch
@@ -26,14 +27,18 @@ emotion_label.pack(padx=10, pady=10)
 # 情绪标签列表
 emotion_labels = ['Anger', 'Happy', 'Surprise', 'Sad', 'Contempt', 'Fear', 'Disgust', 'Neutral']
 
+
 class DataHooker:
     def __init__(self, port):
         self.sender = socket(AF_INET, SOCK_DGRAM)
         self.port = port
 
-def update(self, toSendData):
-    serInfo =('localhost', self.port)
-    self.sender.sendto(toSendData.encode(),serInfo)
+    def update(self, toSendData):
+        serInfo = ('localhost', self.port)
+        self.sender.sendto(toSendData.encode(),serInfo)
+
+
+sender = DataHooker(16666)
 
 # YOLOv8 for face detection
 face_model = YOLO('/Users/hehahahaha/Desktop/NZ Life/UOA/S2/COMPSYS731/emotion_recognition_CNN/yolov8n-face.pt')
@@ -105,6 +110,8 @@ def update_frame():
                     if confidence >= 0.7:
                         predicted_emotion = emotion_labels[predicted_class]
                         emotion_label.config(text=f"Predicted Emotion: {predicted_emotion}, Confidence: {confidence:.2f}")
+
+                        sender.update(predicted_emotion)
                     else:
                         emotion_label.config(text="No emotion detected")
 
