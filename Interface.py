@@ -26,6 +26,15 @@ emotion_label.pack(padx=10, pady=10)
 # 情绪标签列表
 emotion_labels = ['Anger', 'Happy', 'Surprise', 'Sad', 'Contempt', 'Fear', 'Disgust', 'Neutral']
 
+class DataHooker:
+    def __init__(self, port):
+        self.sender = socket(AF_INET, SOCK_DGRAM)
+        self.port = port
+
+def update(self, toSendData):
+    serInfo =('localhost', self.port)
+    self.sender.sendto(toSendData.encode(),serInfo)
+
 # YOLOv8 for face detection
 face_model = YOLO('/Users/hehahahaha/Desktop/NZ Life/UOA/S2/COMPSYS731/emotion_recognition_CNN/yolov8n-face.pt')
 
