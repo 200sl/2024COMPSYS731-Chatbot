@@ -97,7 +97,7 @@ def update_frame():
         video_label.configure(image=imgtk)
 
     # 每 20 毫秒刷新一次
-    video_label.after(1000, update_frame)
+    video_label.after(20, update_frame)
 
 
 # 开始更新视频帧

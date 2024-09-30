@@ -1,8 +1,10 @@
 from GPTService import ChatSession
-
+import json
+import speech_recognition as sr
 
 if __name__ == '__main__':
     chatSession = ChatSession()
+    recognizer = sr.Recognizer()
 
     print("==================================")
     print("Welcome to EduBot Lab")
@@ -59,6 +61,21 @@ if __name__ == '__main__':
                     break
                 else:
                     multi_buffer += dat + "\n"
+
+        if msg == ".s":
+            with sr.Microphone() as source:
+                print("Bot: Speak now")
+                audio = recognizer.listen(source, timeout=5)
+                try:
+                    text = json.loads(recognizer.recognize_vosk(audio))
+                    print("You: ", text['text'])
+                    msg = text['text']
+                except sr.UnknownValueError:
+                    print("Bot: Sorry, I did not get that")
+                    continue
+                except sr.RequestError as e:
+                    print("Bot: Sorry, I am not able to process your request at the moment; {0}".format(e))
+                    continue
 
         if msg == "":
             print("Bot: Please type something or .help for more info")
