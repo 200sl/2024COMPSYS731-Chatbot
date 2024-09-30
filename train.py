@@ -77,7 +77,7 @@ class Trainer:
             # Save the model if the accuracy is the best we've seen so far
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
-                torch.save(self.model.state_dict(), 'best_alexnet_face_recognition.pth')
+                torch.save(self.model.state_dict(), 'alexnet_face_recognition.pt')
                 print(f"Saved Best Model with Accuracy: {best_accuracy}%")
 
             # Call the early stopping
