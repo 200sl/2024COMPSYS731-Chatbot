@@ -29,6 +29,7 @@ class ResultBuffer:
         while True:
             results = self.source.recv(1024)
             self.resultBuffer = results.decode()
+            # print("Recv From Model: ", self.resultBuffer)
 
     def getResult(self):
         return self.resultBuffer
