@@ -25,7 +25,7 @@ emotion_label = tk.Label(root, text="识别到的情绪的数据", fg="white", b
 emotion_label.pack(padx=10, pady=10)
 
 # 情绪标签列表
-emotion_labels = ['Anger', 'Happy', 'Surprise', 'Sad', 'Contempt', 'Fear', 'Disgust', 'Neutral']
+emotion_labels = ['anger', 'contempt', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
 
 
 class DataHooker:
