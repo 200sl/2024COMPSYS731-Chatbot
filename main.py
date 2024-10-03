@@ -63,6 +63,7 @@ if __name__ == '__main__':
                     multi_buffer += dat + "\n"
 
         if msg == ".s":
+            # Speech recognition, using vosk model
             with sr.Microphone() as source:
                 print("Bot: Speak now")
                 audio = recognizer.listen(source, timeout=5)
