@@ -8,9 +8,11 @@ from openai import OpenAI
 from socket import *
 
 
+# create a singleton class for result buffer
 def singleton(cls):
     instance = {}
 
+    # create a new instance if not exist, else return a existed one
     def get_instance(*args, **kwargs):
         if cls not in instance:
             instance[cls] = cls(*args, **kwargs)
@@ -19,6 +21,7 @@ def singleton(cls):
     return get_instance
 
 
+# recv result from interface via UDP
 @singleton
 class ResultBuffer:
     def __init__(self):
@@ -40,21 +43,25 @@ class ResultBuffer:
         t.start()
 
 
+# model select and api key
 MY_MODEL_SELECT = "gpt-4o-mini"
 MY_API_KEY = ""
 
 
+# result receiver
 RECEIVE_RESULT_PORT = 16666
 resultReceiver = ResultBuffer()
 resultReceiver.bind(RECEIVE_RESULT_PORT)
 
 
+# get user emotion from result buffer, called by GPT4o API
 def getUserEmotion():
     result = ResultBuffer().getResult()
 
     return ['Normal'] if result == "" else [result]
 
 
+# Class for handle chat session
 class ChatSession:
     def __init__(self, apiKey=MY_API_KEY, modelSelect=MY_MODEL_SELECT):
         self.model = modelSelect
@@ -62,6 +69,7 @@ class ChatSession:
         self.sessionId = uuid.uuid1()
         self.chatHistory = []
 
+        # initial chat history, setup assistant role
         self.chatHistory.append(
             {
                 "role": "system",  # function/assistant/user/system
@@ -70,6 +78,7 @@ class ChatSession:
             }
         )
 
+        # initial function list called by GPT4o
         self.functions = [
             {
                 "name": "getUserEmotion",
@@ -106,6 +115,7 @@ class ChatSession:
         return True
 
     def chat(self, chat, dataQueue):
+        # add user's chat to chat history
         self.chatHistory.append(
             {
                 "role": "user",
@@ -113,6 +123,7 @@ class ChatSession:
             }
         )
 
+        # get the stream to receive the result
         result = self.client.chat.completions.create(model=self.model,
                                                      messages=self.chatHistory, stream=True,
                                                      functions=self.functions, function_call="auto")
@@ -127,6 +138,7 @@ class ChatSession:
 
         for chunk in result:
 
+            # if the chunk is a function call, call the function and continue the chat
             if chunk.choices[0].finish_reason == "function_call":
                 userEmo = getUserEmotion()
                 self.chatHistory.append({
@@ -138,6 +150,7 @@ class ChatSession:
                 continueGenResult = self.client.chat.completions.create(model=self.model,
                                                                         messages=self.chatHistory, stream=True)
 
+                # get result from stream
                 for continueChunk in continueGenResult:
                     if type(continueChunk.choices[0].delta.content) is not str:
                         continue
@@ -151,8 +164,10 @@ class ChatSession:
             allData += chunk.choices[0].delta.content
             dataQueue.put(chunk.choices[0].delta.content)
 
+        # send data to main thread
         dataQueue.put(allData)
 
+        # save the chat history for next chat
         self.chatHistory.append(
             {
                 "role": "assistant",
@@ -160,6 +175,7 @@ class ChatSession:
             }
         )
 
+    # create a new thread for non-block chat
     def chatNewThread(self, chat):
         dataQueue = queue.Queue()
         thread = Thread(target=self.chat, args=(chat, dataQueue))

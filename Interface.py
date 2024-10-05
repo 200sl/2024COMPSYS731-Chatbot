@@ -9,23 +9,23 @@ from PIL import Image
 from ultralytics import YOLO
 from inference import Inferencer  # Import the Inferencer class
 
-# 创建主窗口
+# Create the main window using Tkinter
 root = tk.Tk()
 root.title("Emotion Recognition Interface")
 root.geometry("800x600")
 
-# 摄像头初始化
+# Camera Initialization
 cap = cv2.VideoCapture(0)
 
-# 视频显示区域
+# Set up GUI Components
 video_label = tk.Label(root)
 video_label.pack(padx=10, pady=10)
 
-# 情绪识别输出
-emotion_label = tk.Label(root, text="识别到的情绪的数据", fg="white", bg="blue", font=("Arial", 20))
+# Output emotion detection data
+emotion_label = tk.Label(root, text="Identified Emotion Data", fg="white", bg="blue", font=("Arial", 20))
 emotion_label.pack(padx=10, pady=10)
 
-# 情绪标签列表
+# Define emotion labels
 emotion_labels = ['Anger', 'Contempt', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
 
 
@@ -50,30 +50,30 @@ emotion_inferencer = Inferencer(emotion_model_path)
 
 
 def update_frame():
-    # 从摄像头抓取一帧
+    # Capture a frame from the camera
     ret, frame = cap.read()
     if ret:
-        # 运行YOLO进行人脸检测
+        # Pass the frame to the YOLO model to detect faces
         results = face_model(frame)
 
-        # 遍历每个检测结果并进行情绪识别
+        # Iterate through each detection result and perform emotion recognition
         for result in results:
             boxes = result.boxes.xyxy.cpu().numpy()
             for box in boxes:
                 x1, y1, x2, y2 = map(int, box[:4])
 
-                # 提取人脸区域
+                # Extract the bounding box coordinates of the detected face
                 face_img = frame[y1:y2, x1:x2]
 
-                # 初始化情绪标签的默认值
+                # Initialize the emotion label and confidence
                 predicted_emotion = "Unknown"
                 confidence = 0.0
 
                 if face_img.size > 0:
-                    # 进行情绪分类预测
+                    # Preprocess the face image
                     predicted_class, confidence = emotion_inferencer.predict(face_img)
 
-                    # 检查置信度是否大于等于 0.7
+                    # Check if confidence is above the threshold (0.7)
                     if confidence >= 0.7:
                         predicted_emotion = emotion_labels[predicted_class]
                         emotion_label.config(
@@ -83,12 +83,12 @@ def update_frame():
                     else:
                         emotion_label.config(text="No emotion detected")
 
-                    # 绘制边框和情绪标签
+                    # Draw a rectangle around the face in the frame and display the emotion label on the frame
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     label = f"{predicted_emotion}: {confidence:.2f}"
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.1, (0, 255, 0), 2)
 
-        # OpenCV 图像转换为 PIL 格式并显示在 Tkinter 界面中
+        # Convert the processed OpenCV frame to PIL format and update the video display in the Tkinter window.
         frame_resized = cv2.resize(frame, (400, 300))
         frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(frame_rgb)
@@ -96,16 +96,13 @@ def update_frame():
         video_label.imgtk = imgtk
         video_label.configure(image=imgtk)
 
-    # 每 20 毫秒刷新一次
+    # Refresh the frame after a fixed interval 
     video_label.after(20, update_frame)
 
-
-# 开始更新视频帧
+# Repeat loop
 update_frame()
 
-# 运行主循环
 root.mainloop()
 
-# 释放摄像头
 cap.release()
 cv2.destroyAllWindows()
