@@ -28,16 +28,12 @@ class Trainer:
         self.test_loader = DataLoader(self.test_dataset, batch_size=32, shuffle=False)
 
         # Load the pre-trained AlexNet model
-        self.model = models.alexnet(weights=AlexNet_Weights.IMAGENET1K_V1)
+        self.model = models.alexnet(weights=None)
         # self.model.load_state_dict(torch.load('alexnet-owt-7be5be79.pth', weights_only=True))
 
         # Modify the last layer for the number of categories
         num_classes = 7  # Adjusted for the number of categories in the dataset
         self.model.classifier[6] = nn.Linear(4096, num_classes)
-
-        # 冻结特征提取层，只训练分类层
-        for param in self.model.features.parameters():
-            param.requires_grad = False
 
         # Define loss functions and optimizers
         self.criterion = nn.CrossEntropyLoss()
@@ -93,19 +89,18 @@ class Trainer:
             acc_list.append(accuracy)
             loss_list.append(avg_loss)
 
-
             # Save the model if the accuracy is the best we've seen so far
             if accuracy > best_accuracy and accuracy > 75.0:
                 best_accuracy = accuracy
                 torch.save(self.model.state_dict(), 'alexnet_face_recognition.pt')
                 print(f"Saved Best Model with Accuracy: {best_accuracy}%")
 
-            # # Call the early stopping
-            # early_stopping(accuracy)
-            #
-            # if early_stopping.early_stop:
-            #     print(f"Early stopping at epoch {epoch+1}")
-            #     break
+            # Call the early stopping
+            early_stopping(accuracy)
+
+            if early_stopping.early_stop:
+                print(f"Early stopping at epoch {epoch+1}")
+                break
 
         return acc_list, loss_list
 
