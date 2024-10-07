@@ -15,6 +15,7 @@ if __name__ == '__main__':
     while True:
         msg: str = input("You: ")
 
+        # Check User Input and execute the corresponding command
         if msg is None:
             continue
 
@@ -23,6 +24,7 @@ if __name__ == '__main__':
             print(f"\t Model Version: {chatSession.model}")
             continue
 
+        # Switch the GPT API Model
         if msg.startswith(".swmodel"):
             msgs = msg.strip().split(" ")
 
@@ -50,6 +52,7 @@ if __name__ == '__main__':
             print("Bot: Chat session reset")
             continue
 
+        # the command cannot handle multi-line input, so add a multi-line mode
         if msg == ".multi":
             multi_buffer = ""
             print("Bot: Multi-line mode enabled, please input until we meet .multiend")
@@ -68,6 +71,7 @@ if __name__ == '__main__':
                 print("Bot: Speak now")
                 audio = recognizer.listen(source, timeout=5)
                 try:
+                    # get the text from the audio, and pass to the chat session
                     text = json.loads(recognizer.recognize_vosk(audio))
                     print("You: ", text['text'])
                     msg = text['text']

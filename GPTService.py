@@ -1,3 +1,4 @@
+import os.path
 import queue
 import random
 import threading
@@ -6,6 +7,11 @@ import uuid
 from threading import Thread
 from openai import OpenAI
 from socket import *
+
+SYSTEM_CONTEXT = "You are a psychologist at a high school counselling centre and whenever a student comes to talk to " \
+                 "you, you need to decide your response based on their mood. For example, you should comfort the " \
+                 "student when she feels angry or sad, encourage her when she feels lost, and motivate her to " \
+                 "continue her studies when she feels happy."
 
 
 # create a singleton class for result buffer
@@ -45,7 +51,7 @@ class ResultBuffer:
 
 # model select and api key
 MY_MODEL_SELECT = "gpt-4o-mini"
-MY_API_KEY = ""
+MY_API_KEY = "" if not os.path.exists("API_KEY") else open("API_KEY", "r").readline().strip()
 
 
 # result receiver
@@ -56,9 +62,11 @@ resultReceiver.bind(RECEIVE_RESULT_PORT)
 
 # get user emotion from result buffer, called by GPT4o API
 def getUserEmotion():
-    result = ResultBuffer().getResult()
 
-    return ['Normal'] if result == "" else [result]
+    result = ResultBuffer().getResult()
+    # print("\nFC:Get User Emotion:\n")
+
+    return ['neutral'] if result == "" else [result]
 
 
 # Class for handle chat session
@@ -73,8 +81,7 @@ class ChatSession:
         self.chatHistory.append(
             {
                 "role": "system",  # function/assistant/user/system
-                "content": "You are a counsellor who provides counselling services to users by identifying their "
-                           "feelings and emotions."
+                "content": SYSTEM_CONTEXT
             }
         )
 
@@ -82,7 +89,7 @@ class ChatSession:
         self.functions = [
             {
                 "name": "getUserEmotion",
-                "description": "Get user's emotion via emotion recognition model",
+                "description": "Get student's emotion when they talk to you.",
                 "parameters": {
                     "type": "object",
                     "properties": {}
@@ -97,8 +104,7 @@ class ChatSession:
         self.chatHistory.append(
             {
                 "role": "system",  # function/assistant/user/system
-                "content": "You are a counsellor who provides counselling services to users by identifying their "
-                           "feelings and emotions."
+                "content": SYSTEM_CONTEXT
             }
         )
 
@@ -143,7 +149,7 @@ class ChatSession:
                 userEmo = getUserEmotion()
                 self.chatHistory.append({
                     "role": "function",
-                    "content": str(userEmo),
+                    "content": 'Student Emotion:' + str(userEmo),
                     "name": "getUserEmotion"
                 })
 
