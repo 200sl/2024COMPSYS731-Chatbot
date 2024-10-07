@@ -1,6 +1,9 @@
 from GPTService import ChatSession
 import json
+import logging
 import speech_recognition as sr
+
+logging.basicConfig(level=logging.CRITICAL)
 
 if __name__ == '__main__':
     chatSession = ChatSession()
@@ -69,7 +72,7 @@ if __name__ == '__main__':
             # Speech recognition, using vosk model
             with sr.Microphone() as source:
                 print("Bot: Speak now")
-                audio = recognizer.listen(source, timeout=5)
+                audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 try:
                     # get the text from the audio, and pass to the chat session
                     text = json.loads(recognizer.recognize_vosk(audio))
