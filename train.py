@@ -4,10 +4,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision import models
-from dataset import CustomImageDataset
 from earlystopping import EarlyStopping
-from sklearn.metrics import precision_score, recall_score, fbeta_score
-
 
 class Trainer:
     def __init__(self):
@@ -94,40 +91,23 @@ class Trainer:
         correct = 0
         total = 0
 
-        all_labels = []
-        all_predictions = []
-
         with torch.no_grad():
             for images, labels in self.test_loader:
                 images, labels = images.to(self.device), labels.to(self.device)
                 outputs = self.model(images)
                 _, predicted = torch.max(outputs.data, 1)
-
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-                # Save all labels and predictions
-                all_labels.extend(labels.cpu().numpy())
-                all_predictions.extend(predicted.cpu().numpy())
-
         accuracy = 100 * correct / total
         print(f'Validation Accuracy: {accuracy}%')
-
-        # Calculate Precision, Recall, and F2-Score
-        precision = precision_score(all_labels, all_predictions, average='weighted')
-        recall = recall_score(all_labels, all_predictions, average='weighted')
-        f2 = fbeta_score(all_labels, all_predictions, beta=2, average='weighted')
-
-        print(f'Precision: {precision:.4f}, Recall: {recall:.4f}, F2-Score: {f2:.4f}')
-
         return accuracy
-
 
 # Create a Trainer instance
 trainer = Trainer()
 
 # Create an EarlyStopping instance with patience=10
-early_stopping = EarlyStopping(patience=20, delta=0)
+early_stopping = EarlyStopping(patience=10, delta=0)
 
 # Start training with early stopping
 trainer.train(200, early_stopping)
