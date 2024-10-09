@@ -6,18 +6,13 @@ import cv2
 import torch.nn as nn
 
 class Inferencer:
-    def __init__(self, model_path):
-        # Determine the device (GPU if available, otherwise CPU)
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        
+    def __init__(self, model_path): 
         # Load the pre-trained model
         self.model = self.load_model(model_path)
         
         # Define the image transformation pipeline. These MUST be the same as the training transforms
         self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(10),
+            transforms.Resize((224, 224)),  # AlexNet 输入尺寸
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
@@ -25,13 +20,11 @@ class Inferencer:
     def load_model(self, model_path):
         # Load the entire model from the specified path
         # map_location ensures the model is loaded to the correct device (CPU or GPU)
-        # model = models.alexnet(pretrained=False)
-        # model.classifier[6] = nn.Linear(4096, 8)
-        # state_dict = torch.load('path_to_model_weights.pth')
-        # model.load_state_dict(state_dict)
-        # Load the entire model directly
-        model = torch.load(model_path, map_location=self.device)
-        
+        model = models.alexnet(pretrained=False)
+        model.classifier[6] = nn.Linear(4096, 7)
+        state_dict = torch.load(model_path, weights_only=True)
+        model.load_state_dict(state_dict)
+     
         # Set the model to evaluation mode (important for inference)
         model.eval()
         return model
@@ -42,7 +35,7 @@ class Inferencer:
         # Convert to PIL Image
         image = Image.fromarray(image)
         image = self.transform(image)
-        return image.unsqueeze(0).to(self.device)
+        return image.unsqueeze(0)
     
 
 
@@ -69,19 +62,19 @@ class Inferencer:
 # Usage example:
 if __name__ == "__main__":
     # Specify the path to your saved model
-    model_path = "alexnet_face_recognition.pt.pt"  # Adjust this to your saved model path
+    model_path = "alexnet_face_recognition.pt"  # Adjust this to your saved model path
     
     # Create an instance of the Inferencer class
     inferencer = Inferencer(model_path)
 
     # Specify the path to the image you want to classify
-    image_path = "test_images/happy/ffhq_1.png"
+    image_path = "test_images/anger/image0000333.jpg"
     
     # Perform the prediction
     image = cv2.imread(image_path)
     predicted_class, confidence = inferencer.predict(image)
     
-    emotion_labels = ['Anger', 'Contempt','disgust','fear', 'happy', 'neutral',  'sad', 'surprise', ] 
+    emotion_labels = ['Anger', 'Happy','Surprise','Sad', 'Fear',  'Disgust', ] 
     emotion_label = emotion_labels[predicted_class]
     # Print the results
     print(f"Predicted class: {predicted_class}, Emotion: {emotion_label}, Confidence: {confidence:.2f}")
