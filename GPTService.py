@@ -8,65 +8,65 @@ from threading import Thread
 from openai import OpenAI
 from socket import *
 
-SYSTEM_CONTEXT = "You are a teacher at a primary school and whenever a student comes to ask " \
-                 "you some academic questions, you need to decide your response based on their mood. For example, you should provide " \
-                 "student a new feedback with a clearer way when she feels disgust or sad, and motivate her then inspire her to " \
-                 "continue her studies when she feels happy or suprise."
+# SYSTEM_CONTEXT = "You are a teacher at a primary school and whenever a student comes to ask " \
+#                  "you some academic questions, you need to decide your response based on their mood. For example, you should provide " \
+#                  "student a new feedback with a clearer way when she feels disgust or sad, and motivate her then inspire her to " \
+#                  "continue her studies when she feels happy or suprise."
 
 
 # create a singleton class for result buffer
-def singleton(cls):
-    instance = {}
-
-    # create a new instance if not exist, else return a existed one
-    def get_instance(*args, **kwargs):
-        if cls not in instance:
-            instance[cls] = cls(*args, **kwargs)
-        return instance[cls]
-
-    return get_instance
-
-
-# recv result from interface via UDP
-@singleton
-class ResultBuffer:
-    def __init__(self):
-        self.resultBuffer = ""
-        self.source = socket(AF_INET, SOCK_DGRAM)
-
-    def recvThread(self):
-        while True:
-            results = self.source.recv(1024)
-            self.resultBuffer = results.decode()
-            # print("Recv From Model: ", self.resultBuffer)
-
-    def getResult(self):
-        return self.resultBuffer
-
-    def bind(self, port):
-        self.source.bind(('localhost', port))
-        t = Thread(target=self.recvThread)
-        t.start()
-
+# def singleton(cls):
+#     instance = {}
+#
+#     # create a new instance if not exist, else return a existed one
+#     def get_instance(*args, **kwargs):
+#         if cls not in instance:
+#             instance[cls] = cls(*args, **kwargs)
+#         return instance[cls]
+#
+#     return get_instance
+#
+#
+# # recv result from interface via UDP
+# @singleton
+# class ResultBuffer:
+#     def __init__(self):
+#         self.resultBuffer = ""
+#         self.source = socket(AF_INET, SOCK_DGRAM)
+#
+#     def recvThread(self):
+#         while True:
+#             results = self.source.recv(1024)
+#             self.resultBuffer = results.decode()
+#             # print("Recv From Model: ", self.resultBuffer)
+#
+#     def getResult(self):
+#         return self.resultBuffer
+#
+#     def bind(self, port):
+#         self.source.bind(('localhost', port))
+#         t = Thread(target=self.recvThread)
+#         t.start()
+#
 
 # model select and api key
 MY_MODEL_SELECT = "gpt-4o-mini"
 MY_API_KEY = "" if not os.path.exists("API_KEY") else open("API_KEY", "r").readline().strip()
 
 
-# result receiver
-RECEIVE_RESULT_PORT = 16666
-resultReceiver = ResultBuffer()
-resultReceiver.bind(RECEIVE_RESULT_PORT)
+# # result receiver
+# RECEIVE_RESULT_PORT = 16666
+# resultReceiver = ResultBuffer()
+# resultReceiver.bind(RECEIVE_RESULT_PORT)
 
 
-# get user emotion from result buffer, called by GPT4o API
-def getUserEmotion():
-
-    result = ResultBuffer().getResult()
-    # print("\nFC:Get User Emotion:\n")
-
-    return ['neutral'] if result == "" else [result]
+# # get user emotion from result buffer, called by GPT4o API
+# def getUserEmotion():
+#
+#     result = ResultBuffer().getResult()
+#     # print("\nFC:Get User Emotion:\n")
+#
+#     return ['neutral'] if result == "" else [result]
 
 
 # Class for handle chat session
@@ -77,36 +77,36 @@ class ChatSession:
         self.sessionId = uuid.uuid1()
         self.chatHistory = []
 
-        # initial chat history, setup assistant role
-        self.chatHistory.append(
-            {
-                "role": "system",  # function/assistant/user/system
-                "content": SYSTEM_CONTEXT
-            }
-        )
+        # # initial chat history, setup assistant role
+        # self.chatHistory.append(
+        #     {
+        #         "role": "system",  # function/assistant/user/system
+        #         "content": SYSTEM_CONTEXT
+        #     }
+        # )
 
-        # initial function list called by GPT4o
-        self.functions = [
-            {
-                "name": "getUserEmotion",
-                "description": "Get student's emotion when they talk to you.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {}
-                }
-            }
-        ]
+        # # initial function list called by GPT4o
+        # self.functions = [
+        #     {
+        #         "name": "getUserEmotion",
+        #         "description": "Get student's emotion when they talk to you.",
+        #         "parameters": {
+        #             "type": "object",
+        #             "properties": {}
+        #         }
+        #     }
+        # ]
 
     def clearChatHistory(self):
         self.sessionId = uuid.uuid1()
         self.chatHistory = []
 
-        self.chatHistory.append(
-            {
-                "role": "system",  # function/assistant/user/system
-                "content": SYSTEM_CONTEXT
-            }
-        )
+        # self.chatHistory.append(
+        #     {
+        #         "role": "system",  # function/assistant/user/system
+        #         "content": SYSTEM_CONTEXT
+        #     }
+        # )
 
     def switchModel(self, model):
         if model == "":
@@ -130,9 +130,13 @@ class ChatSession:
         )
 
         # get the stream to receive the result
+        # result = self.client.chat.completions.create(model=self.model,
+        #                                              messages=self.chatHistory, stream=True,
+        #                                              functions=self.functions, function_call="auto")
+
         result = self.client.chat.completions.create(model=self.model,
-                                                     messages=self.chatHistory, stream=True,
-                                                     functions=self.functions, function_call="auto")
+                                                     messages=self.chatHistory, stream=True)
+
 
         # result = self.client.chat.completions.create(model=self.model,
         #                                              messages=self.chatHistory, stream=False,
@@ -145,25 +149,25 @@ class ChatSession:
         for chunk in result:
 
             # if the chunk is a function call, call the function and continue the chat
-            if chunk.choices[0].finish_reason == "function_call":
-                userEmo = getUserEmotion()
-                self.chatHistory.append({
-                    "role": "function",
-                    "content": 'Student Emotion:' + str(userEmo),
-                    "name": "getUserEmotion"
-                })
-
-                continueGenResult = self.client.chat.completions.create(model=self.model,
-                                                                        messages=self.chatHistory, stream=True)
-
-                # get result from stream
-                for continueChunk in continueGenResult:
-                    if type(continueChunk.choices[0].delta.content) is not str:
-                        continue
-                    allData += continueChunk.choices[0].delta.content
-                    dataQueue.put(continueChunk.choices[0].delta.content)
-
-                break
+            # if chunk.choices[0].finish_reason == "function_call":
+            #     userEmo = getUserEmotion()
+            #     self.chatHistory.append({
+            #         "role": "function",
+            #         "content": 'Student Emotion:' + str(userEmo),
+            #         "name": "getUserEmotion"
+            #     })
+            #
+            #     continueGenResult = self.client.chat.completions.create(model=self.model,
+            #                                                             messages=self.chatHistory, stream=True)
+            #
+            #     # get result from stream
+            #     for continueChunk in continueGenResult:
+            #         if type(continueChunk.choices[0].delta.content) is not str:
+            #             continue
+            #         allData += continueChunk.choices[0].delta.content
+            #         dataQueue.put(continueChunk.choices[0].delta.content)
+            #
+            #     break
 
             if type(chunk.choices[0].delta.content) is not str:
                 continue
@@ -192,5 +196,5 @@ class ChatSession:
 # for test
 if __name__ == "__main__":
     while True:
-        print(getUserEmotion())
+        # print(getUserEmotion())
         time.sleep(0.3)
