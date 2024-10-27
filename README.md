@@ -98,7 +98,7 @@ Start `Interface.py` for real-time emotion detection:
 Start `main.py` for real-time chatbot interaction:
 
 ```bash
-python main.py
+python Interface.py
 python main.py
 ```
 
