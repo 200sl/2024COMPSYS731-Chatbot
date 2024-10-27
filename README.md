@@ -2,7 +2,9 @@
 # ChatGPT-powered emotion recognition robot
 
 ## Project Overview
+
 This project develops an emotion recognition robot that combines **ChatGPT** and **Emotion detection models** to recognize user emotions and generate personalized responses. Emotion recognition captures user facial expressions in real time through a camera, and combined with the dialogue generation provided by ChatGPT, the robot can dynamically adapt to the user's emotional state, which is particularly suitable for education and emotional interaction scenarios.
+
 ---
 
 ## Project structure
@@ -27,7 +29,10 @@ project_root/
 ```
 ## Related documents
 
-To run the emotion recognition model, you can download the trained emotion model here [alexnet_face_recognition.pt](https://github.com/200sl/2024COMPSYS731-Chatbot/releases/download/files/alexnet_face_recognition.pt)
+To run the emotion recognition model, you can download the trained emotion model here. [alexnet_face_recognition.pt](https://github.com/200sl/2024COMPSYS731-Chatbot/releases/download/files/alexnet_face_recognition.pt)<br>
+You can get the available data set here. [Dataset](https://github.com/200sl/2024COMPSYS731-Chatbot/releases/download/Dataset/Dataset.zip)<br>
+Face image capture processing model: [yolov8n-face.pt](https://github.com/200sl/2024COMPSYS731-Chatbot/releases/download/yolov8/yolov8n-face.pt)<br>
+AlexNet model: [alexnet-owt-7be5be79.pth](https://github.com/200sl/2024COMPSYS731-Chatbot/releases/download/alexnet/alexnet-owt-7be5be79.pth)
 
 ---
 
