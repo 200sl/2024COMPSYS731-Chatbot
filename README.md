@@ -25,6 +25,9 @@ project_root/
 │
 └── README.md                  # Project description document
 ```
+## Related documents
+
+To run the emotion recognition model, you can download the trained emotion model here [alexnet_face_recognition.pt](https://github.com/200sl/2024COMPSYS731-Chatbot/releases/download/files/alexnet_face_recognition.pt)
 
 ---
 
